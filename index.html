@@ -38,6 +38,15 @@
             margin-bottom: 10px;
             border-radius: 5px;
         }
+
+        #cart {
+            display: none;
+            margin-top: 30px;
+        }
+
+        #cart-items div {
+            margin-bottom: 5px;
+        }
     </style>
 </head>
 <body>
@@ -50,6 +59,12 @@
     </div>
 
     <div id="product-list"></div>
+
+    <div id="cart">
+        <h2>Winkelwagen</h2>
+        <div id="cart-items"></div>
+        <button id="btn-checkout">Bestelling afronden</button>
+    </div>
 
     <script>
         // CSV laden en tonen
@@ -76,26 +91,94 @@
             return result;
         }
 
+        let cart = [];
+
         function displayProducts(products) {
             const container = document.getElementById('product-list');
             container.innerHTML = '';
-            products.forEach(p => {
+            products.forEach((p, index) => {
                 const div = document.createElement('div');
                 div.className = 'product-item';
                 div.innerHTML = `
                     <h3>${p.product_name}</h3>
                     <p>Artikelnummer: ${p.article_number}</p>
                     <p>Voorraad: ${p.stock}</p>
+                    <button data-index="${index}">Toevoegen aan winkelwagen</button>
                 `;
                 container.appendChild(div);
             });
+
+            // Event listeners voor toevoegen aan winkelwagen
+            container.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const product = products[this.getAttribute('data-index')];
+                    addToCart(product);
+                });
+            });
         }
 
+        function addToCart(product) {
+            let existing = cart.find(item => item.article_number === product.article_number);
+            if (existing) {
+                existing.quantity += 1;
+            } else {
+                cart.push({...product, quantity: 1});
+            }
+            updateCart();
+        }
+
+        function updateCart() {
+            const cartDiv = document.getElementById('cart');
+            const itemsDiv = document.getElementById('cart-items');
+            itemsDiv.innerHTML = '';
+            cart.forEach((item, i) => {
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    ${item.product_name} (${item.article_number}) - Aantal: ${item.quantity}
+                    <button data-i="${i}" class="btn-plus">+</button>
+                    <button data-i="${i}" class="btn-minus">-</button>
+                `;
+                itemsDiv.appendChild(div);
+            });
+
+            // Event listeners + / -
+            itemsDiv.querySelectorAll('.btn-plus').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    cart[this.getAttribute('data-i')].quantity += 1;
+                    updateCart();
+                });
+            });
+            itemsDiv.querySelectorAll('.btn-minus').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    let index = this.getAttribute('data-i');
+                    cart[index].quantity -= 1;
+                    if (cart[index].quantity <= 0) cart.splice(index,1);
+                    updateCart();
+                });
+            });
+
+            cartDiv.style.display = cart.length ? 'block' : 'none';
+        }
+
+        // Checkout knop
+        document.getElementById('btn-checkout').addEventListener('click', function() {
+            if (!cart.length) return alert('Je winkelwagen is leeg!');
+            alert('Bestelling afgerond!'); // hier komt later PDF
+            cart = [];
+            updateCart();
+        });
+
+        // Knop productlijst
         document.getElementById('btn-productlijst').addEventListener('click', function() {
             document.getElementById('home-buttons').style.display = 'none';
             const container = document.getElementById('product-list');
             container.style.display = 'block';
             loadProducts();
+        });
+
+        // Scan knop placeholder
+        document.getElementById('btn-scan').addEventListener('click', function() {
+            alert('Scan-functie komt hier later');
         });
     </script>
 
