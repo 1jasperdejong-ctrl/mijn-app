@@ -1,3 +1,9 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Peacock Garden Supports</title>
 <style>
 :root {
     --primary-green: #27ae60;
@@ -57,13 +63,13 @@ button:hover { background: var(--light-green); cursor:pointer; }
 #cart { display:none; margin-top:20px; font-size:16px; font-weight:bold; }
 #cart-items { margin-bottom:100px; }
 
-#search { width:90%; max-width:430px; padding:12px; font-size:18px; margin-bottom:10px; border-radius:8px; border:1px solid #ccc; font-weight:bold; position:sticky; top:100px; background:#ecf0f1; z-index:5; }
+#search { width:100%; padding:12px; font-size:18px; margin-bottom:10px; border-radius:8px; border:1px solid #ccc; font-weight:bold; position:sticky; top:80px; background:#ecf0f1; z-index:5; }
 
 #checkout-btn { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); width:90%; z-index:10; font-size:20px; font-weight:bold; }
 
 #qr-reader { width:100%; border-radius:12px; margin-bottom:10px; }
 
-#back-home-btn { position:fixed; top:10px; left:10px; padding:8px 12px; font-size:18px; background:#e74c3c; border-radius:6px; color:white; z-index:10; }
+#back-home-btn { position:absolute; top:10px; left:10px; padding:8px 12px; font-size:18px; background:#e74c3c; border-radius:6px; color:white; }
 #back-home-btn:hover { background:#c0392b; cursor:pointer; }
 
 #checkout input, #checkout textarea {
@@ -81,10 +87,221 @@ button:hover { background: var(--light-green); cursor:pointer; }
 #home-screen, #scanner { display:block; }
 </style>
 
-<!-- Productlijst -->
-<div id="product-list">
-    <button id="back-home-btn" onclick="backHomeFromList()">&#8592; Home</button>
-    <input type="text" id="search" placeholder="Zoek product..." oninput="filterProducts()">
-    <div id="products"></div>
-    <button id="checkout-btn" onclick="showCart()">Door naar winkelwagen</button>
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+    <h1>Peacock Garden Supports</h1>
+
+    <!-- Home -->
+    <div id="home-screen">
+        <button onclick="startScanner()">Bestellen via scan</button>
+        <button onclick="showProductList()">Bestellen via productlijst</button>
+    </div>
+
+    <!-- Scanner -->
+    <div id="scanner" style="display:none;">
+        <div id="qr-reader"></div>
+        <button onclick="stopScanner()">Terug</button>
+    </div>
+
+    <!-- Productlijst -->
+    <div id="product-list">
+        <button id="back-home-btn" onclick="backHomeFromList()">&#8592; Home</button>
+        <input type="text" id="search" placeholder="Zoek product..." oninput="filterProducts()">
+        <div id="products"></div>
+        <button id="checkout-btn" onclick="showCart()">Door naar winkelwagen</button>
+    </div>
+
+    <!-- Winkelwagen -->
+    <div id="cart">
+        <div id="cart-items"></div>
+        <button id="checkout-btn" onclick="showCheckout()">Bestelling plaatsen</button>
+        <button onclick="backToProducts()">Terug naar producten</button>
+    </div>
+
+    <!-- Checkout -->
+    <div id="checkout">
+        <label for="tuincentrum">Tuincentrum</label>
+        <input type="text" id="tuincentrum">
+
+        <label for="contactpersoon">Contactpersoon</label>
+        <input type="text" id="contactpersoon">
+
+        <label for="datum">Datum</label>
+        <input type="date" id="datum">
+
+        <label for="bijzonderheden">Bijzonderheden</label>
+        <textarea id="bijzonderheden" placeholder="Bijvoorbeeld: extra opmerking..."></textarea>
+
+        <div id="checkout-summary"></div>
+        <button onclick="generatePDF()">Bestelling bevestigen</button>
+        <button onclick="backToCart()">Terug naar winkelwagen</button>
+    </div>
 </div>
+
+<script>
+let products = [];
+let cart = [];
+let html5QrcodeScanner;
+
+// Load CSV
+async function loadProducts() {
+    const response = await fetch('Appproduct.csv');
+    const data = await response.text();
+    const lines = data.split('\n');
+    lines.shift(); // skip header
+    lines.forEach(line => {
+        if(line.trim()==='') return;
+        const [article_number, barcode, product_name, stock] = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+        products.push({article_number, barcode, product_name: product_name.replace(/^"|"$/g,''), stock: parseInt(stock)});
+    });
+}
+loadProducts();
+
+// Scanner
+function startScanner() {
+    document.getElementById('home-screen').style.display='none';
+    document.getElementById('scanner').style.display='block';
+    html5QrcodeScanner = new Html5Qrcode("qr-reader");
+    Html5Qrcode.getCameras().then(cameras=>{
+        if(cameras && cameras.length){
+            const cameraId = cameras.find(c=>c.label.toLowerCase().includes("back"))?.id || cameras[0].id;
+            html5QrcodeScanner.start(cameraId,{
+                fps:10,
+                qrbox:{width:300,height:150} 
+            },
+                qrCodeMessage => { addToCartByBarcode(qrCodeMessage); },
+                errorMessage => {}
+            );
+        }
+    }).catch(err=>alert("Camera niet gevonden: "+err));
+}
+
+function stopScanner() {
+    html5QrcodeScanner.stop().then(()=>{
+        document.getElementById('scanner').style.display='none';
+        document.getElementById('home-screen').style.display='block';
+    });
+}
+
+function addToCartByBarcode(barcode){
+    const product = products.find(p=>p.barcode===barcode);
+    if(!product){ alert("Product niet gevonden"); return; }
+    let cartItem = cart.find(p=>p.article_number===product.article_number);
+    if(cartItem) cartItem.qty++;
+    else cart.push({...product, qty:1});
+    updateProductListQty(product.article_number);
+    alert(`${product.product_name} toegevoegd!`);
+}
+
+function updateProductListQty(article_number){
+    const span = document.getElementById(`qty-${article_number}`);
+    if(span) span.innerText = cart.find(p=>p.article_number===article_number)?.qty || 0;
+}
+
+// Productlijst
+function showProductList() {
+    document.getElementById('home-screen').style.display='none';
+    document.getElementById('product-list').style.display='block';
+    renderProductList(products);
+}
+
+function renderProductList(list) {
+    const container = document.getElementById('products');
+    container.innerHTML='';
+    list.forEach(p=>{
+        const div = document.createElement('div');
+        div.className='product-item';
+        div.innerHTML=`
+            <span class="product-name">${p.product_name} | Stock: ${p.stock}</span>
+            <div class="qty-controls">
+                <button onclick="updateCart('${p.article_number}', -1)">-</button>
+                <span class="qty-display" id="qty-${p.article_number}">${cart.find(c=>c.article_number===p.article_number)?.qty||0}</span>
+                <button onclick="updateCart('${p.article_number}', 1)">+</button>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function filterProducts() {
+    const term = document.getElementById('search').value.toLowerCase();
+    renderProductList(products.filter(p=>p.product_name.toLowerCase().includes(term)));
+}
+
+function updateCart(article_number, delta){
+    const product = products.find(p=>p.article_number===article_number);
+    let cartItem = cart.find(p=>p.article_number===article_number);
+    if(cartItem){
+        cartItem.qty += delta;
+        if(cartItem.qty<=0) cart = cart.filter(p=>p.article_number!==article_number);
+    } else if(delta>0){
+        cart.push({...product, qty:1});
+    }
+    updateProductListQty(article_number);
+}
+
+function showCart(){
+    document.getElementById('product-list').style.display='none';
+    document.getElementById('cart').style.display='block';
+    const container = document.getElementById('cart-items');
+    container.innerHTML='';
+    cart.forEach(p=>{
+        container.innerHTML += `<div>${p.product_name} | Aantal: ${p.qty}</div>`;
+    });
+}
+
+// Checkout overzicht
+function showCheckout(){
+    document.getElementById('cart').style.display='none';
+    document.getElementById('checkout').style.display='block';
+    const today = new Date().toISOString().substr(0,10);
+    document.getElementById('datum').value=today;
+
+    const summary = document.getElementById('checkout-summary');
+    summary.innerHTML='';
+    cart.forEach(p=>{
+        summary.innerHTML += `<div>Aantal besteld: ${p.qty}</div>`;
+    });
+}
+
+// Navigatie
+function backHomeFromList(){ document.getElementById('product-list').style.display='none'; document.getElementById('home-screen').style.display='block'; }
+function backToProducts(){ document.getElementById('cart').style.display='none'; document.getElementById('product-list').style.display='block'; }
+function backToCart(){ document.getElementById('checkout').style.display='none'; document.getElementById('cart').style.display='block'; }
+
+// PDF
+function generatePDF(){
+    if(cart.length===0){ alert("Winkelwagen is leeg"); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const tuincentrum = document.getElementById('tuincentrum').value;
+    const contactpersoon = document.getElementById('contactpersoon').value;
+    const datum = document.getElementById('datum').value;
+    const bijzonderheden = document.getElementById('bijzonderheden').value;
+
+    doc.setFontSize(18);
+    doc.text(`Tuincentrum: ${tuincentrum}`, 10, 10);
+    doc.text(`Contactpersoon: ${contactpersoon}`, 10, 20);
+    doc.text(`Datum: ${datum}`, 10, 30);
+    doc.text(`Bijzonderheden: ${bijzonderheden}`, 10, 40);
+
+    doc.setFontSize(16);
+    doc.text("Bestelling:", 10, 50);
+    let y=60;
+    cart.forEach(p=>{
+        doc.text(`Artikel: ${p.article_number} | Stock: ${p.stock}     Aantal besteld: ${p.qty}`, 10, y);
+        y+=10;
+    });
+
+    doc.save(`Bestelling_${datum}.pdf`);
+    alert("PDF gedownload!");
+    cart=[];
+    document.getElementById('checkout').style.display='none';
+    document.getElementById('home-screen').style.display='block';
+}
+</script>
+</body>
+</html>
