@@ -20,18 +20,17 @@
     fetch('Appproduct.csv')
       .then(response => response.text())
       .then(data => {
-        const lines = data.trim().split('\n');
-        const headers = lines.shift().split(',');
+      const products = lines.map(line => {
+  const values = line.split(',');
+  return {
+    product_name: values[0],
+    article_number: values[1],
+    barcode: values[2],
+    category: values[3], // 4e kolom
+    quantity: 0
+  };
+});
 
-        const products = lines.map(line => {
-          const values = line.split(',');
-          return {
-            product_name: values[0],
-            article_number: values[1],
-            barcode: values[2],
-            quantity: 0
-          };
-        });
 
         const container = document.getElementById('product-lijst');
         container.innerHTML = '';
