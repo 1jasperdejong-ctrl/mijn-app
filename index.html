@@ -80,7 +80,53 @@ html, body {
 <a href="scan.html" class="button primary">Bestellen via scan</a>
 <a href="productlijst.html" class="button">Bestellen via productlijst</a>
 <a href="#" class="button">Bestelhistorie</a>
+<div id="product-list"></div>
 
   </div>
+  <script>
+// Functie om CSV te laden en om te zetten naar een array van producten
+function loadProducts() {
+    fetch('Appproduct.csv')
+    .then(response => response.text())
+    .then(data => {
+        const lines = data.trim().split('\n'); // Split op regels
+        const products = lines.map(line => {
+            const [product_name, article_number, description, stock] = parseCSVLine(line);
+            return { product_name, article_number, description, stock };
+        });
+        displayProducts(products);
+    })
+    .catch(error => console.error('Fout bij laden CSV:', error));
+}
+
+// CSV parser die dubbele aanhalingstekens correct verwerkt
+function parseCSVLine(line) {
+    const regex = /(?:\"([^\"]+)\"|([^,]+))/g;
+    let result = [], match;
+    while (match = regex.exec(line)) {
+        result.push(match[1] || match[2]);
+    }
+    return result;
+}
+
+// Functie om producten op de pagina te tonen
+function displayProducts(products) {
+    const container = document.getElementById('product-list');
+    products.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'product-item';
+        div.innerHTML = `
+            <h3>${p.product_name}</h3>
+            <p>Artikelnummer: ${p.article_number}</p>
+            <p>Voorraad: ${p.stock}</p>
+        `;
+        container.appendChild(div);
+    });
+}
+
+// Start het laden
+document.addEventListener('DOMContentLoaded', loadProducts);
+</script>
+
 </body>
 </html>
