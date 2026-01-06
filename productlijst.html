@@ -5,9 +5,89 @@
   <title>Productlijst</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; text-align: center; padding: 50px; background: #f2f2f7; }
-    h1 { color: #2e7d32; }
-    a { display: inline-block; margin-top: 20px; text-decoration: none; color: #007aff; font-size: 18px; }
+    <body>
+  <div class="container">
+    <h1>Productlijst</h1>
+    <div id="product-lijst">Laden…</div>
+    <a href="index.html" class="button">← Terug naar Home</a>
+  </div>
+
+  <script>
+    // Winkelwagen array
+    let winkelwagen = [];
+
+    // CSV inladen
+    fetch('Appproduct.csv')
+      .then(response => response.text())
+      .then(data => {
+        const lines = data.trim().split('\n');
+        const headers = lines.shift().split(',');
+
+        const products = lines.map(line => {
+          const values = line.split(',');
+          return {
+            product_name: values[0],
+            article_number: values[1],
+            barcode: values[2],
+            quantity: 0
+          };
+        });
+
+        const container = document.getElementById('product-lijst');
+        container.innerHTML = '';
+
+        products.forEach((product, index) => {
+          const div = document.createElement('div');
+          div.style.marginBottom = '16px';
+          div.style.border = '1px solid #ccc';
+          div.style.padding = '12px';
+          div.style.borderRadius = '12px';
+          div.style.background = 'white';
+          div.innerHTML = `
+            <strong>${product.product_name}</strong><br>
+            Artikel: ${product.article_number}<br>
+            <button data-index="${index}" class="add">+</button>
+            <span id="qty-${index}">0</span>
+            <button data-index="${index}" class="remove">-</button>
+          `;
+          container.appendChild(div);
+        });
+
+        // + en - knoppen
+        container.addEventListener('click', (e) => {
+          if(e.target.classList.contains('add')) {
+            const i = e.target.dataset.index;
+            products[i].quantity++;
+            document.getElementById('qty-' + i).innerText = products[i].quantity;
+            updateWinkelwagen(products[i]);
+          }
+          if(e.target.classList.contains('remove')) {
+            const i = e.target.dataset.index;
+            if(products[i].quantity > 0) products[i].quantity--;
+            document.getElementById('qty-' + i).innerText = products[i].quantity;
+            updateWinkelwagen(products[i]);
+          }
+        });
+
+        function updateWinkelwagen(product) {
+          const existing = winkelwagen.find(p => p.article_number === product.article_number);
+          if(product.quantity === 0) {
+            if(existing) winkelwagen = winkelwagen.filter(p => p.article_number !== product.article_number);
+          } else {
+            if(existing) existing.quantity = product.quantity;
+            else winkelwagen.push({...product});
+          }
+          console.log('Winkelwagen:', winkelwagen); // voorlopig in console
+        }
+
+      })
+      .catch(err => {
+        document.getElementById('product-lijst').innerText = 'Fout bij het laden van producten.';
+        console.error(err);
+      });
+  </script>
+</body>
+
   </style>
 </head>
 <body>
