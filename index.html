@@ -5,24 +5,33 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Peacock Garden Supports</title>
 <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f7f7f7; }
-    .container { padding: 20px; max-width: 480px; margin: auto; }
-    h1 { text-align: center; color: #2c3e50; }
-    h2 { text-align: center; color: #34495e; font-weight: normal; }
-    button { display: block; width: 100%; padding: 15px; margin: 15px 0; font-size: 18px; border: none; border-radius: 8px; background-color: #27ae60; color: white; }
-    button:hover { background-color: #2ecc71; cursor: pointer; }
-    #product-list { display: none; margin-top: 20px; }
-    .product-item { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 10px; margin-bottom: 10px; border-radius: 6px; }
-    .product-name { flex: 1; margin-right: 10px; }
-    .qty-controls button { padding: 5px 10px; font-size: 16px; margin: 0 3px; }
-    #cart { display: none; margin-top: 20px; }
-    #cart-items { margin-bottom: 20px; }
-    #checkout { display: none; }
-    input, select { width: 100%; padding: 10px; margin: 10px 0; font-size: 16px; border-radius: 6px; border: 1px solid #ccc; }
+body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f7f7f7; }
+.container { padding: 20px; max-width: 480px; margin:auto; position:relative; min-height:100vh; }
+h1 { text-align:center; color:#2c3e50; }
+h2 { text-align:center; color:#34495e; font-weight:normal; }
+
+button { border:none; border-radius:8px; background:#27ae60; color:white; font-size:18px; padding:15px; width:100%; margin:15px 0; }
+button:hover { background:#2ecc71; cursor:pointer; }
+
+#product-list { display:none; margin-top:20px; }
+.product-item { display:flex; justify-content:space-between; align-items:center; background:#fff; padding:10px; margin-bottom:10px; border-radius:6px; }
+.product-name { flex:1; margin-right:10px; }
+.qty-controls { display:flex; align-items:center; gap:10px; }
+.qty-controls button { font-size:24px; padding:5px 15px; }
+.qty-display { font-size:20px; width:40px; text-align:center; }
+
+#cart { display:none; margin-top:20px; }
+#cart-items { margin-bottom:80px; }
+#checkout { display:none; }
+
+input, select { width:100%; padding:10px; margin:10px 0; font-size:16px; border-radius:6px; border:1px solid #ccc; }
+
+#search { width:100%; padding:10px; font-size:18px; margin-bottom:10px; border-radius:6px; border:1px solid #ccc; }
+
+#checkout-btn { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); width:90%; z-index:10; }
 </style>
-<!-- HTML5 QR Code library -->
+
 <script src="https://unpkg.com/html5-qrcode"></script>
-<!-- jsPDF for PDF generation -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
@@ -30,7 +39,7 @@
     <h1>Peacock Garden Supports</h1>
     <h2>Klaar om te bestellen?</h2>
 
-    <!-- Home knoppen -->
+    <!-- Home -->
     <div id="home-screen">
         <button onclick="startScanner()">Bestellen via scan</button>
         <button onclick="showProductList()">Bestellen via productlijst</button>
@@ -44,15 +53,16 @@
 
     <!-- Productlijst -->
     <div id="product-list">
+        <input type="text" id="search" placeholder="Zoek product..." oninput="filterProducts()">
         <div id="products"></div>
-        <button onclick="showCart()">Winkelwagen bekijken</button>
+        <button id="checkout-btn" onclick="showCart()">Door naar winkelwagen</button>
         <button onclick="backHomeFromList()">Terug</button>
     </div>
 
     <!-- Winkelwagen -->
     <div id="cart">
         <div id="cart-items"></div>
-        <button onclick="showCheckout()">Bestelling plaatsen</button>
+        <button id="checkout-btn" onclick="showCheckout()">Bestelling plaatsen</button>
         <button onclick="backToProducts()">Terug naar producten</button>
     </div>
 
@@ -75,7 +85,7 @@ async function loadProducts() {
     const response = await fetch('Appproduct.csv');
     const data = await response.text();
     const lines = data.split('\n');
-    lines.shift(); // header verwijderen
+    lines.shift(); // header
     lines.forEach(line => {
         if(line.trim() === '') return;
         const [article_number, barcode, product_name, stock] = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
@@ -84,103 +94,100 @@ async function loadProducts() {
 }
 loadProducts();
 
+// Scanner
 function startScanner() {
-    document.getElementById('home-screen').style.display = 'none';
-    document.getElementById('scanner').style.display = 'block';
+    document.getElementById('home-screen').style.display='none';
+    document.getElementById('scanner').style.display='block';
     html5QrcodeScanner = new Html5Qrcode("qr-reader");
-    Html5Qrcode.getCameras().then(cameras => {
-        if(cameras && cameras.length) {
-            const cameraId = cameras.find(cam => cam.label.toLowerCase().includes("back"))?.id || cameras[0].id;
-            html5QrcodeScanner.start(cameraId, { fps: 10, qrbox: 250 },
-                qrCodeMessage => {
-                    addToCartByBarcode(qrCodeMessage);
-                },
-                errorMessage => { /* ignore */ }
-            );
+    Html5Qrcode.getCameras().then(cameras=>{
+        if(cameras && cameras.length){
+            const cameraId = cameras.find(c=>c.label.toLowerCase().includes("back"))?.id || cameras[0].id;
+            html5QrcodeScanner.start(cameraId,{fps:10,qrbox:250},
+                qrCodeMessage => { addToCartByBarcode(qrCodeMessage); },
+                errorMessage => {});
         }
-    }).catch(err => alert("Camera niet gevonden: " + err));
+    }).catch(err=>alert("Camera niet gevonden: "+err));
 }
 
 function stopScanner() {
-    html5QrcodeScanner.stop().then(() => {
-        document.getElementById('scanner').style.display = 'none';
-        document.getElementById('home-screen').style.display = 'block';
-    }).catch(err => console.error(err));
+    html5QrcodeScanner.stop().then(()=>{ document.getElementById('scanner').style.display='none'; document.getElementById('home-screen').style.display='block'; });
 }
 
-function addToCartByBarcode(barcode) {
-    const product = products.find(p => p.barcode === barcode);
-    if(!product) { alert("Product niet gevonden"); return; }
-    const existing = cart.find(p => p.article_number === product.article_number);
+function addToCartByBarcode(barcode){
+    const product = products.find(p=>p.barcode===barcode);
+    if(!product){ alert("Product niet gevonden"); return; }
+    const existing = cart.find(p=>p.article_number===product.article_number);
     if(existing) existing.qty++;
     else cart.push({...product, qty:1});
     alert(`${product.product_name} toegevoegd!`);
 }
 
+// Productlijst
 function showProductList() {
-    document.getElementById('home-screen').style.display = 'none';
-    document.getElementById('product-list').style.display = 'block';
+    document.getElementById('home-screen').style.display='none';
+    document.getElementById('product-list').style.display='block';
+    renderProductList(products);
+}
+
+function renderProductList(list) {
     const container = document.getElementById('products');
-    container.innerHTML = '';
-    products.forEach(p => {
+    container.innerHTML='';
+    list.forEach(p=>{
         const div = document.createElement('div');
-        div.className = 'product-item';
-        div.innerHTML = `<span class="product-name">${p.product_name}</span>
-                         <div class="qty-controls">
-                         <button onclick="updateCart('${p.article_number}', -1)">-</button>
-                         <span id="qty-${p.article_number}">0</span>
-                         <button onclick="updateCart('${p.article_number}', 1)">+</button>
-                         </div>`;
+        div.className='product-item';
+        div.innerHTML=`
+            <span class="product-name">${p.product_name}</span>
+            <div class="qty-controls">
+                <button onclick="updateCart('${p.article_number}', -1)">-</button>
+                <span class="qty-display" id="qty-${p.article_number}">${cart.find(c=>c.article_number===p.article_number)?.qty||0}</span>
+                <button onclick="updateCart('${p.article_number}', 1)">+</button>
+            </div>
+        `;
         container.appendChild(div);
     });
 }
 
-function updateCart(article_number, delta) {
-    const product = products.find(p => p.article_number === article_number);
-    let cartItem = cart.find(p => p.article_number === article_number);
-    if(cartItem) {
+function filterProducts() {
+    const term = document.getElementById('search').value.toLowerCase();
+    renderProductList(products.filter(p=>p.product_name.toLowerCase().includes(term)));
+}
+
+function updateCart(article_number, delta){
+    const product = products.find(p=>p.article_number===article_number);
+    let cartItem = cart.find(p=>p.article_number===article_number);
+    if(cartItem){
         cartItem.qty += delta;
-        if(cartItem.qty <= 0) cart = cart.filter(p => p.article_number !== article_number);
-    } else if(delta > 0) {
+        if(cartItem.qty<=0) cart = cart.filter(p=>p.article_number!==article_number);
+    } else if(delta>0){
         cart.push({...product, qty:1});
     }
     document.getElementById(`qty-${article_number}`).innerText = cart.find(p=>p.article_number===article_number)?.qty || 0;
 }
 
-function showCart() {
-    document.getElementById('product-list').style.display = 'none';
-    document.getElementById('cart').style.display = 'block';
+function showCart(){
+    document.getElementById('product-list').style.display='none';
+    document.getElementById('cart').style.display='block';
     const container = document.getElementById('cart-items');
-    container.innerHTML = '';
-    cart.forEach(p => {
-        container.innerHTML += `<div>${p.product_name} (Aantal: ${p.qty})</div>`;
+    container.innerHTML='';
+    cart.forEach(p=>{
+        container.innerHTML += `<div>${p.product_name} | Artikel: ${p.article_number} | Stock: ${p.stock} | Aantal: ${p.qty}</div>`;
     });
 }
 
-function backHomeFromList() {
-    document.getElementById('product-list').style.display = 'none';
-    document.getElementById('home-screen').style.display = 'block';
-}
-
-function backToProducts() {
-    document.getElementById('cart').style.display = 'none';
-    document.getElementById('product-list').style.display = 'block';
-}
-
-function showCheckout() {
-    document.getElementById('cart').style.display = 'none';
-    document.getElementById('checkout').style.display = 'block';
+// Navigatie
+function backHomeFromList(){ document.getElementById('product-list').style.display='none'; document.getElementById('home-screen').style.display='block'; }
+function backToProducts(){ document.getElementById('cart').style.display='none'; document.getElementById('product-list').style.display='block'; }
+function showCheckout(){
+    document.getElementById('cart').style.display='none';
+    document.getElementById('checkout').style.display='block';
     const today = new Date().toISOString().substr(0,10);
-    document.getElementById('datum').value = today;
+    document.getElementById('datum').value=today;
 }
+function backToCart(){ document.getElementById('checkout').style.display='none'; document.getElementById('cart').style.display='block'; }
 
-function backToCart() {
-    document.getElementById('checkout').style.display = 'none';
-    document.getElementById('cart').style.display = 'block';
-}
-
-function generatePDF() {
-    if(cart.length === 0) { alert("Winkelwagen is leeg"); return; }
+// PDF
+function generatePDF(){
+    if(cart.length===0){ alert("Winkelwagen is leeg"); return; }
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     const tuincentrum = document.getElementById('tuincentrum').value;
@@ -190,16 +197,16 @@ function generatePDF() {
     doc.text(`Contactpersoon: ${contactpersoon}`, 10, 20);
     doc.text(`Datum: ${datum}`, 10, 30);
     doc.text("Bestelling:", 10, 40);
-    let y = 50;
-    cart.forEach(p => {
-        doc.text(`${p.product_name} - Aantal: ${p.qty}`, 10, y);
-        y += 10;
+    let y=50;
+    cart.forEach(p=>{
+        doc.text(`Artikel: ${p.article_number} | Stock: ${p.stock} | ${p.product_name} | Aantal besteld: ${p.qty}`, 10, y);
+        y+=10;
     });
     doc.save(`Bestelling_${datum}.pdf`);
     alert("PDF gedownload!");
-    cart = [];
-    document.getElementById('checkout').style.display = 'none';
-    document.getElementById('home-screen').style.display = 'block';
+    cart=[];
+    document.getElementById('checkout').style.display='none';
+    document.getElementById('home-screen').style.display='block';
 }
 </script>
 </body>
