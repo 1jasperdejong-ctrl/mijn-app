@@ -52,8 +52,19 @@ button {
 }
 button:hover { background: var(--light-green); cursor:pointer; }
 
-/* Homeknoppen */
-.home-btn { font-size:24px; padding:20px; }
+/* Home-knop linksboven, klein */
+#back-home-btn {
+    position:fixed;
+    top:10px;
+    left:10px;
+    padding:6px 10px;
+    font-size:18px;
+    background:#e74c3c;
+    border-radius: 8px;
+    color:white;
+    z-index:10;
+}
+#back-home-btn:hover { background:#c0392b; cursor:pointer; }
 
 /* Productlijst */
 #product-list { display:none; position:relative; }
@@ -70,15 +81,15 @@ button:hover { background: var(--light-green); cursor:pointer; }
     box-shadow:0 2px 6px rgba(0,0,0,0.1);
 }
 .product-name { flex:1; margin-right:10px; font-size:18px; font-weight:bold; }
-.product-stock { font-size:14px; color:#555; margin-left:5px; }
+.product-stock { font-size:20px; font-weight:bold; color:#555; margin-left:5px; }
 .qty-controls {
     display:flex;
     align-items:center;
-    gap:12px;
+    gap:8px;
 }
 .qty-controls button {
-    font-size:28px;
-    padding:10px 20px;
+    font-size:18px;
+    padding:4px 10px;
     border-radius: var(--button-radius);
     background: var(--primary-green);
     color:white;
@@ -86,14 +97,14 @@ button:hover { background: var(--light-green); cursor:pointer; }
     transition:0.2s;
 }
 .qty-controls button:hover { background: var(--light-green); }
-.qty-display { font-size:24px; width:50px; text-align:center; font-weight:bold; }
+.qty-display { font-size:20px; width:40px; text-align:center; font-weight:bold; }
 
 /* Zoekbalk */
 #search {
     width:90%;
     max-width:430px;
-    padding:12px;
-    font-size:18px;
+    padding:10px;
+    font-size:16px;
     margin-bottom:15px;
     border-radius: var(--button-radius);
     border:1px solid #ccc;
@@ -124,27 +135,6 @@ button:hover { background: var(--light-green); cursor:pointer; }
 }
 #checkout-btn:hover { background: var(--light-green); }
 
-/* Scanner */
-#qr-reader {
-    width:100%;
-    border-radius: var(--button-radius);
-    margin-bottom:10px;
-}
-
-/* Home-knop linksboven, klein */
-#back-home-btn {
-    position:fixed;
-    top:10px;
-    left:10px;
-    padding:6px 10px;
-    font-size:18px;
-    background:#e74c3c;
-    border-radius: 8px;
-    color:white;
-    z-index:10;
-}
-#back-home-btn:hover { background:#c0392b; cursor:pointer; }
-
 /* Checkout */
 #checkout input, #checkout textarea {
     width:95%;
@@ -167,6 +157,7 @@ button:hover { background: var(--light-green); cursor:pointer; }
 #checkout { display:none; }
 #home-screen { display:block; }
 #scanner { display:none; }
+
 </style>
 </head>
 <body>
@@ -175,8 +166,8 @@ button:hover { background: var(--light-green); cursor:pointer; }
 <!-- HOME SCHERM -->
 <div id="home-screen">
     <h1>Peacock Garden Supports</h1>
-    <button class="home-btn" onclick="showScanner()">Bestellen via scan</button>
-    <button class="home-btn" onclick="showProductList()">Bestellen via productlijst</button>
+    <button onclick="showScanner()">Bestellen via scan</button>
+    <button onclick="showProductList()">Bestellen via productlijst</button>
 </div>
 
 <!-- PRODUCTLIJST -->
@@ -184,28 +175,8 @@ button:hover { background: var(--light-green); cursor:pointer; }
     <button id="back-home-btn" onclick="backHomeFromList()">&#8592;</button>
     <h1 style="margin-top:40px; text-align:center;">Peacock Garden Supports</h1>
     <input type="text" id="search" placeholder="Zoek product..." oninput="filterProducts()">
-    <div id="products">
-        <!-- Voorbeeldproducten -->
-        <div class="product-item">
-            <div class="product-name">Robin steunring met 3 pootjes</div>
-            <div class="product-stock">10</div>
-            <div class="qty-controls">
-                <button onclick="changeQty(this,-1)">-</button>
-                <div class="qty-display">0</div>
-                <button onclick="changeQty(this,1)">+</button>
-            </div>
-        </div>
-        <div class="product-item">
-            <div class="product-name">Rozenboog massief, groen</div>
-            <div class="product-stock">1</div>
-            <div class="qty-controls">
-                <button onclick="changeQty(this,-1)">-</button>
-                <div class="qty-display">0</div>
-                <button onclick="changeQty(this,1)">+</button>
-            </div>
-        </div>
-    </div>
-    <button id="checkout-btn" onclick="showCart()">Door naar winkelwagen</button>
+    <div id="products"></div>
+    <button id="checkout-btn" onclick="showCheckout()">Door naar winkelwagen</button>
 </div>
 
 <!-- SCANNER -->
@@ -225,16 +196,26 @@ button:hover { background: var(--light-green); cursor:pointer; }
     <button onclick="confirmOrder()">Bestelling bevestigen</button>
 </div>
 
-<script src="https://unpkg.com/html5-qrcode"></script>
 <script>
+const productsData = [
+    {name:"Robin steunring met 3 pootjes", stock:10},
+    {name:"Rozenboog massief, groen", stock:1},
+    {name:"Robin groeiraster met 3 pootjes", stock:10},
+    {name:"Borderrand Metaal Premium  - Groen - 16x100cm", stock:10},
+    {name:"Plantenhouder 50 cm", stock:10}
+];
+
 function showProductList() {
     document.getElementById('home-screen').style.display='none';
     document.getElementById('product-list').style.display='block';
+    renderProducts();
 }
+
 function showScanner() {
     document.getElementById('home-screen').style.display='none';
     document.getElementById('scanner').style.display='block';
 }
+
 function backHomeFromList() {
     document.getElementById('product-list').style.display='none';
     document.getElementById('home-screen').style.display='block';
@@ -243,9 +224,30 @@ function backHomeFromScanner() {
     document.getElementById('scanner').style.display='none';
     document.getElementById('home-screen').style.display='block';
 }
-function showCart() {
-    alert('Winkelwagen functie komt hier');
+
+function showCheckout() {
+    document.getElementById('checkout').style.display='block';
 }
+
+function renderProducts() {
+    const container = document.getElementById('products');
+    container.innerHTML='';
+    productsData.forEach(p=>{
+        const div = document.createElement('div');
+        div.className='product-item';
+        div.innerHTML = `
+            <div class="product-name">${p.name}</div>
+            <div class="product-stock">${p.stock}</div>
+            <div class="qty-controls">
+                <button onclick="changeQty(this,-1)">-</button>
+                <div class="qty-display">0</div>
+                <button onclick="changeQty(this,1)">+</button>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
+
 function changeQty(btn, val){
     let display = btn.parentNode.querySelector('.qty-display');
     let current = parseInt(display.innerText);
@@ -253,6 +255,7 @@ function changeQty(btn, val){
     if(current<0) current=0;
     display.innerText = current;
 }
+
 function filterProducts(){
     let filter = document.getElementById('search').value.toLowerCase();
     let items = document.querySelectorAll('.product-item');
@@ -262,8 +265,12 @@ function filterProducts(){
         else item.style.display='none';
     });
 }
-</script>
 
+function confirmOrder(){
+    alert('Bestelling bevestigd!');
+}
+
+</script>
 </div>
 </body>
 </html>
