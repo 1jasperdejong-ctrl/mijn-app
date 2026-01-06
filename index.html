@@ -47,6 +47,22 @@
         #cart-items div {
             margin-bottom: 5px;
         }
+
+        input {
+            padding: 5px;
+            margin: 5px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        #checkout-form {
+            display: none;
+            margin-top: 30px;
+        }
+
+        #checkout-form button {
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -66,8 +82,20 @@
         <button id="btn-checkout">Bestelling afronden</button>
     </div>
 
+    <div id="checkout-form">
+        <h2>Bestelgegevens</h2>
+        <label>Tuincentrum</label>
+        <input type="text" id="input-tuincentrum" placeholder="Vul het tuincentrum in">
+        <label>Contactpersoon</label>
+        <input type="text" id="input-contact" placeholder="Vul de contactpersoon in">
+        <label>Datum</label>
+        <input type="date" id="input-datum">
+        <button id="btn-generate-pdf">PDF downloaden</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
-        // CSV laden en tonen
+        // CSV laden
         function loadProducts() {
             fetch('Appproduct.csv')
             .then(response => response.text())
@@ -141,7 +169,7 @@
                 itemsDiv.appendChild(div);
             });
 
-            // Event listeners + / -
+            // + / - knoppen
             itemsDiv.querySelectorAll('.btn-plus').forEach(btn => {
                 btn.addEventListener('click', function() {
                     cart[this.getAttribute('data-i')].quantity += 1;
@@ -163,23 +191,57 @@
         // Checkout knop
         document.getElementById('btn-checkout').addEventListener('click', function() {
             if (!cart.length) return alert('Je winkelwagen is leeg!');
-            alert('Bestelling afgerond!'); // hier komt later PDF
-            cart = [];
-            updateCart();
+            document.getElementById('cart').style.display = 'none';
+            document.getElementById('checkout-form').style.display = 'block';
+
+            // Datum automatisch instellen
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('input-datum').value = today;
         });
 
-        // Knop productlijst
+        // PDF genereren en downloaden
+        document.getElementById('btn-generate-pdf').addEventListener('click', function() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            const tuincentrum = document.getElementById('input-tuincentrum').value || 'Onbekend';
+            const contact = document.getElementById('input-contact').value || 'Onbekend';
+            const datum = document.getElementById('input-datum').value || '';
+
+            doc.setFontSize(16);
+            doc.text('Peacock Garden Supports - Bestelling', 10, 20);
+            doc.setFontSize(12);
+            doc.text(`Tuincentrum: ${tuincentrum}`, 10, 30);
+            doc.text(`Contactpersoon: ${contact}`, 10, 37);
+            doc.text(`Datum: ${datum}`, 10, 44);
+
+            doc.text('Producten:', 10, 54);
+            let y = 60;
+            cart.forEach(item => {
+                doc.text(`${item.product_name} (${item.article_number}) - Aantal: ${item.quantity}`, 10, y);
+                y += 7;
+            });
+
+            doc.save('Bestelling.pdf');
+
+            // Winkelwagen leegmaken en terug naar home
+            cart = [];
+            updateCart();
+            document.getElementById('checkout-form').style.display = 'none';
+            document.getElementById('home-buttons').style.display = 'flex';
+        });
+
+        // Knoppen homepage
         document.getElementById('btn-productlijst').addEventListener('click', function() {
             document.getElementById('home-buttons').style.display = 'none';
-            const container = document.getElementById('product-list');
-            container.style.display = 'block';
+            document.getElementById('product-list').style.display = 'block';
             loadProducts();
         });
 
-        // Scan knop placeholder
         document.getElementById('btn-scan').addEventListener('click', function() {
             alert('Scan-functie komt hier later');
         });
+
     </script>
 
 </body>
