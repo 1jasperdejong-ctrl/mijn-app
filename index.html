@@ -26,15 +26,15 @@ body {
     padding:20px;
     max-width:480px;
     margin:auto;
-    position:relative;
     min-height:100vh;
+    box-sizing:border-box;
 }
 
 h1 {
     text-align:center;
     font-size:38px;
     color: var(--primary-green);
-    margin-bottom:10px;
+    margin-bottom:20px;
     font-weight:bold;
 }
 
@@ -52,11 +52,11 @@ button {
 }
 button:hover { background: var(--light-green); cursor:pointer; }
 
-/* Homepagina knoppen */
+/* Homeknoppen */
 .home-btn { font-size:24px; padding:20px; }
 
 /* Productlijst */
-#product-list { display:none; margin-top:20px; position:relative; }
+#product-list { display:none; }
 .product-item {
     display:flex;
     justify-content:space-between;
@@ -88,9 +88,7 @@ button:hover { background: var(--light-green); cursor:pointer; }
 .qty-controls button:hover { background: var(--light-green); }
 .qty-display { font-size:24px; width:50px; text-align:center; font-weight:bold; }
 
-#cart { display:none; margin-top:20px; font-size:16px; font-weight:bold; }
-#cart-items { margin-bottom:100px; }
-
+/* Zoekbalk */
 #search {
     width:90%;
     max-width:430px;
@@ -100,12 +98,12 @@ button:hover { background: var(--light-green); cursor:pointer; }
     border-radius: var(--button-radius);
     border:1px solid #ccc;
     font-weight:bold;
-    position:sticky;
-    top:110px;
-    background:#ecf0f1;
-    z-index:5;
+    display:block;
+    margin-left:auto;
+    margin-right:auto;
 }
 
+/* Checkout knop altijd zichtbaar onderaan */
 #checkout-btn {
     position:fixed;
     bottom:20px;
@@ -122,12 +120,14 @@ button:hover { background: var(--light-green); cursor:pointer; }
 }
 #checkout-btn:hover { background: var(--light-green); }
 
+/* Scanner */
 #qr-reader {
     width:100%;
     border-radius: var(--button-radius);
     margin-bottom:10px;
 }
 
+/* Home-knop linksboven */
 #back-home-btn {
     position:fixed;
     top:10px;
@@ -141,6 +141,7 @@ button:hover { background: var(--light-green); cursor:pointer; }
 }
 #back-home-btn:hover { background:#c0392b; cursor:pointer; }
 
+/* Checkout */
 #checkout input, #checkout textarea {
     width:95%;
     padding:12px;
@@ -177,7 +178,7 @@ button:hover { background: var(--light-green); cursor:pointer; }
 <!-- PRODUCTLIJST -->
 <div id="product-list">
     <button id="back-home-btn" onclick="backHomeFromList()">&#8592;</button>
-    <h1>Peacock Garden Supports</h1>
+    <h1 style="margin-top:50px;">Peacock Garden Supports</h1>
     <input type="text" id="search" placeholder="Zoek product..." oninput="filterProducts()">
     <div id="products"></div>
     <button id="checkout-btn" onclick="showCart()">Door naar winkelwagen</button>
@@ -202,7 +203,6 @@ button:hover { background: var(--light-green); cursor:pointer; }
 
 <script src="https://unpkg.com/html5-qrcode"></script>
 <script>
-// Schermen tonen/verbergen
 function showProductList() {
     document.getElementById('home-screen').style.display='none';
     document.getElementById('product-list').style.display='block';
@@ -220,11 +220,10 @@ function backHomeFromScanner() {
     document.getElementById('home-screen').style.display='block';
 }
 function showCart() {
-    alert('Winkelwagen komt hier'); // tijdelijk
+    alert('Winkelwagen functie komt hier');
 }
-
-// Hier komen later: CSV inladen, zoekfunctie, +/-, PDF genereren, scanner functionaliteit
 </script>
+
 </div>
 </body>
 </html>
