@@ -56,7 +56,7 @@ button:hover { background: var(--light-green); cursor:pointer; }
 .home-btn { font-size:24px; padding:20px; }
 
 /* Productlijst */
-#product-list { display:none; }
+#product-list { display:none; position:relative; }
 .product-item {
     display:flex;
     justify-content:space-between;
@@ -101,6 +101,10 @@ button:hover { background: var(--light-green); cursor:pointer; }
     display:block;
     margin-left:auto;
     margin-right:auto;
+    position:sticky;
+    top:20px;
+    background:#ecf0f1;
+    z-index:5;
 }
 
 /* Checkout knop altijd zichtbaar onderaan */
@@ -127,15 +131,15 @@ button:hover { background: var(--light-green); cursor:pointer; }
     margin-bottom:10px;
 }
 
-/* Home-knop linksboven */
+/* Home-knop linksboven, klein */
 #back-home-btn {
     position:fixed;
     top:10px;
     left:10px;
-    padding:10px 14px;
-    font-size:20px;
+    padding:6px 10px;
+    font-size:18px;
     background:#e74c3c;
-    border-radius: var(--button-radius);
+    border-radius: 8px;
     color:white;
     z-index:10;
 }
@@ -178,9 +182,29 @@ button:hover { background: var(--light-green); cursor:pointer; }
 <!-- PRODUCTLIJST -->
 <div id="product-list">
     <button id="back-home-btn" onclick="backHomeFromList()">&#8592;</button>
-    <h1 style="margin-top:50px;">Peacock Garden Supports</h1>
+    <h1 style="margin-top:40px; text-align:center;">Peacock Garden Supports</h1>
     <input type="text" id="search" placeholder="Zoek product..." oninput="filterProducts()">
-    <div id="products"></div>
+    <div id="products">
+        <!-- Voorbeeldproducten -->
+        <div class="product-item">
+            <div class="product-name">Robin steunring met 3 pootjes</div>
+            <div class="product-stock">10</div>
+            <div class="qty-controls">
+                <button onclick="changeQty(this,-1)">-</button>
+                <div class="qty-display">0</div>
+                <button onclick="changeQty(this,1)">+</button>
+            </div>
+        </div>
+        <div class="product-item">
+            <div class="product-name">Rozenboog massief, groen</div>
+            <div class="product-stock">1</div>
+            <div class="qty-controls">
+                <button onclick="changeQty(this,-1)">-</button>
+                <div class="qty-display">0</div>
+                <button onclick="changeQty(this,1)">+</button>
+            </div>
+        </div>
+    </div>
     <button id="checkout-btn" onclick="showCart()">Door naar winkelwagen</button>
 </div>
 
@@ -221,6 +245,22 @@ function backHomeFromScanner() {
 }
 function showCart() {
     alert('Winkelwagen functie komt hier');
+}
+function changeQty(btn, val){
+    let display = btn.parentNode.querySelector('.qty-display');
+    let current = parseInt(display.innerText);
+    current += val;
+    if(current<0) current=0;
+    display.innerText = current;
+}
+function filterProducts(){
+    let filter = document.getElementById('search').value.toLowerCase();
+    let items = document.querySelectorAll('.product-item');
+    items.forEach(item=>{
+        let name = item.querySelector('.product-name').innerText.toLowerCase();
+        if(name.includes(filter)) item.style.display='flex';
+        else item.style.display='none';
+    });
 }
 </script>
 
