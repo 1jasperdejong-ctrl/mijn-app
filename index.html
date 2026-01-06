@@ -27,7 +27,7 @@
             cursor: pointer;
         }
 
-        #product-list {
+        #product-list, #scan-area, #cart, #checkout-form {
             display: none;
             margin-top: 30px;
         }
@@ -37,11 +37,6 @@
             padding: 10px;
             margin-bottom: 10px;
             border-radius: 5px;
-        }
-
-        #cart {
-            display: none;
-            margin-top: 30px;
         }
 
         #cart-items div {
@@ -55,13 +50,9 @@
             box-sizing: border-box;
         }
 
-        #checkout-form {
-            display: none;
-            margin-top: 30px;
-        }
-
-        #checkout-form button {
-            margin-top: 10px;
+        #html5-qrcode-full-region {
+            width: 100%;
+            margin-top: 20px;
         }
     </style>
 </head>
@@ -72,6 +63,11 @@
     <div id="home-buttons">
         <button id="btn-scan">Bestellen via scan</button>
         <button id="btn-productlijst">Bestellen via productlijst</button>
+    </div>
+
+    <div id="scan-area">
+        <div id="html5-qrcode-full-region"></div>
+        <button id="btn-stop-scan">Stoppen met scannen</button>
     </div>
 
     <div id="product-list"></div>
@@ -93,19 +89,25 @@
         <button id="btn-generate-pdf">PDF downloaden</button>
     </div>
 
+    <!-- JS libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.3/minified/html5-qrcode.min.js"></script>
+
     <script>
+        let products = [];
+        let cart = [];
+
         // CSV laden
-        function loadProducts() {
+        function loadProducts(callback) {
             fetch('Appproduct.csv')
             .then(response => response.text())
             .then(data => {
                 const lines = data.trim().split('\n');
-                const products = lines.map(line => {
+                products = lines.map(line => {
                     const [product_name, article_number, description, stock] = parseCSVLine(line);
-                    return { product_name, article_number, description, stock };
+                    return { product_name, article_number, description, stock: parseInt(stock) };
                 });
-                displayProducts(products);
+                if (callback) callback();
             })
             .catch(error => console.error('Fout bij laden CSV:', error));
         }
@@ -119,9 +121,7 @@
             return result;
         }
 
-        let cart = [];
-
-        function displayProducts(products) {
+        function displayProducts() {
             const container = document.getElementById('product-list');
             container.innerHTML = '';
             products.forEach((p, index) => {
@@ -136,22 +136,17 @@
                 container.appendChild(div);
             });
 
-            // Event listeners voor toevoegen aan winkelwagen
             container.querySelectorAll('button').forEach(btn => {
                 btn.addEventListener('click', function() {
-                    const product = products[this.getAttribute('data-index')];
-                    addToCart(product);
+                    addToCart(products[this.getAttribute('data-index')]);
                 });
             });
         }
 
         function addToCart(product) {
             let existing = cart.find(item => item.article_number === product.article_number);
-            if (existing) {
-                existing.quantity += 1;
-            } else {
-                cart.push({...product, quantity: 1});
-            }
+            if (existing) existing.quantity += 1;
+            else cart.push({...product, quantity: 1});
             updateCart();
         }
 
@@ -169,7 +164,6 @@
                 itemsDiv.appendChild(div);
             });
 
-            // + / - knoppen
             itemsDiv.querySelectorAll('.btn-plus').forEach(btn => {
                 btn.addEventListener('click', function() {
                     cart[this.getAttribute('data-i')].quantity += 1;
@@ -188,13 +182,11 @@
             cartDiv.style.display = cart.length ? 'block' : 'none';
         }
 
-        // Checkout knop
+        // Checkout
         document.getElementById('btn-checkout').addEventListener('click', function() {
-            if (!cart.length) return alert('Je winkelwagen is leeg!');
+            if (!cart.length) return alert('Winkelwagen is leeg!');
             document.getElementById('cart').style.display = 'none';
             document.getElementById('checkout-form').style.display = 'block';
-
-            // Datum automatisch instellen
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('input-datum').value = today;
         });
@@ -224,25 +216,52 @@
 
             doc.save('Bestelling.pdf');
 
-            // Winkelwagen leegmaken en terug naar home
             cart = [];
             updateCart();
             document.getElementById('checkout-form').style.display = 'none';
             document.getElementById('home-buttons').style.display = 'flex';
         });
 
-        // Knoppen homepage
+        // Homepage knoppen
         document.getElementById('btn-productlijst').addEventListener('click', function() {
             document.getElementById('home-buttons').style.display = 'none';
             document.getElementById('product-list').style.display = 'block';
-            loadProducts();
+            loadProducts(displayProducts);
         });
 
+        // Scan knop
+        let html5QrCode;
         document.getElementById('btn-scan').addEventListener('click', function() {
-            alert('Scan-functie komt hier later');
+            document.getElementById('home-buttons').style.display = 'none';
+            document.getElementById('scan-area').style.display = 'block';
+            loadProducts(() => {
+                html5QrCode = new Html5Qrcode("html5-qrcode-full-region");
+                html5QrCode.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: 250 },
+                    (decodedText, decodedResult) => {
+                        const product = products.find(p => p.barcode === decodedText);
+                        if (product) {
+                            addToCart(product);
+                            alert(`Product toegevoegd: ${product.product_name}`);
+                        } else {
+                            alert('Product niet gevonden in CSV!');
+                        }
+                    },
+                    (errorMessage) => {
+                        // console.log("scan error:", errorMessage);
+                    }
+                ).catch(err => console.error(err));
+            });
+        });
+
+        document.getElementById('btn-stop-scan').addEventListener('click', function() {
+            html5QrCode.stop().then(() => {
+                document.getElementById('scan-area').style.display = 'none';
+                document.getElementById('home-buttons').style.display = 'flex';
+            }).catch(err => console.error(err));
         });
 
     </script>
-
 </body>
 </html>
